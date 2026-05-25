@@ -1,4 +1,6 @@
 # Face-Alignment-System
+Data files are located within the release section.
+
 Convolutional Neural Network model that becomes trained to detect facial features from grayscale face images by placing coordinates(x,y) where the key facial features should be. 
 
 Data is loaded from training, validation and test data(without labels) which is then used to train the model.
