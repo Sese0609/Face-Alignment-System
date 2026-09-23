@@ -1,52 +1,44 @@
-import os
-os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
-import gradio as gr
+import streamlit as st
 import numpy as np
 import cv2
 import keras
+from PIL import Image
 
-model = keras.models.load_model('face_alignment_model.keras')
+@st.cache_resource
+def load_model():
+    return keras.models.load_model('face_alignment_model.keras')
 
+model = load_model()
+TARGET_SIZE = 256
 
-def predict_landmarks(input_image):
-    if input_image is None:
-        return None
+st.title("Facial Landmark Detection CNN")
+st.write("Upload an image to see the neural network predict 5 facial landmarks in real-time.")
 
-    print("1. Image received...")
-    original_h, original_w = input_image.shape[:2]
-    gray_img = cv2.cvtColor(input_image, cv2.COLOR_RGB2GRAY)
+uploaded_file = st.file_uploader("Choose a face image...", type=["jpg", "jpeg", "png"])
 
-    TRAINING_IMG_SIZE = 256
-    resized_img = cv2.resize(gray_img, (TRAINING_IMG_SIZE, TRAINING_IMG_SIZE))
-    normalized_img = resized_img / 255.0
-    input_array = np.expand_dims(normalized_img, axis=(0, -1)).astype(np.float32)
+if uploaded_file is not None:
+    image = Image.open(uploaded_file).convert('RGB')
+    input_image = np.array(image)
+    orig_h, orig_w = input_image.shape[:2]
 
-    print("2. Running forward pass...")
-    preds = model(input_array, training=False).numpy()
+    gray = cv2.cvtColor(input_image, cv2.COLOR_RGB2GRAY)
+    resized = cv2.resize(gray, (TARGET_SIZE, TARGET_SIZE))
 
-    print("3. Drawing points...")
-    pts = preds.reshape(-1, 2)
-    scale_x = original_w / TRAINING_IMG_SIZE
-    scale_y = original_h / TRAINING_IMG_SIZE
+    normalized = (resized / 255.0).astype(np.float32)
+    input_tensor = np.expand_dims(normalized, axis=(0, -1))
 
-    output_image = input_image.copy()
+    with st.spinner('Predicting landmarks...'):
+        preds = model(input_tensor, training=False).numpy()
+        pts = preds.reshape(-1, 2)
+
+    scale_x = orig_w / TARGET_SIZE
+    scale_y = orig_h / TARGET_SIZE
+
+    output_img = input_image.copy()
     for (x, y) in pts:
         cx = int(x * scale_x)
         cy = int(y * scale_y)
-        cv2.circle(output_image, (cx, cy), radius=10, color=(0, 255, 0), thickness=-1)
-        cv2.circle(output_image, (cx, cy), radius=12, color=(255, 255, 255), thickness=2)
+        cv2.circle(output_img, (cx, cy), radius=10, color=(0, 255, 0), thickness=-1)
+        cv2.circle(output_img, (cx, cy), radius=12, color=(255, 255, 255), thickness=2)
 
-    print("4. Done!")
-    return output_image
-
-demo = gr.Interface(
-    fn=predict_landmarks,
-    inputs=gr.Image(type="numpy", label="Upload Face Image"),
-    outputs=gr.Image(type="numpy", label="Predicted Landmarks"),
-    title="Facial Landmark Detection CNN",
-    description="Upload an image to see the neural network predict 5 facial landmarks in real-time.",
-)
-
-if __name__ == "__main__":
-    demo.launch(inbrowser=True)
-
+    st.image(output_img, caption="Predicted Landmarks", use_container_width=True)
