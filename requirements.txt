@@ -1,5 +1,6 @@
-gradio
-tensorflow
+streamlit
+tensorflow-cpu
 keras
 opencv-python-headless
 numpy
+pillow
