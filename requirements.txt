@@ -1,0 +1,5 @@
+gradio
+tensorflow
+keras
+opencv-python-headless
+numpy
